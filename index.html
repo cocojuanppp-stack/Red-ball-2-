@@ -8,11 +8,9 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#1a0a2e; display:flex; flex-direction:column; align-items:center; min-height:100vh; font-family:Arial,sans-serif; color:#fff; }
 h1 { font-size:1em; color:#ff6b35; padding:6px; }
-#wrap { width:100vw; max-width:600px; position:relative; }
+#wrap { width:100vw; max-width:600px; }
 #status { color:#aaa; font-size:0.7em; text-align:center; padding:3px; }
 #game-area { width:100%; aspect-ratio:4/3; background:#000; border:2px solid #ff6b35; }
-#tap { display:flex; position:absolute; top:0; left:0; right:0; bottom:24px; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; font-size:1.1em; color:#fff; cursor:pointer; z-index:10; }
-#tap.off { display:none; }
 #controls { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:#0d0621; width:100%; max-width:600px; }
 .btn { background:#2d1b4e; border:2px solid #ff6b35; border-radius:12px; color:#fff; font-size:1.8em; padding:14px 0; cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none; text-align:center; }
 .btn:active,.btn.pressed { background:#ff6b35; }
@@ -24,7 +22,6 @@ h1 { font-size:1em; color:#ff6b35; padding:6px; }
 <h1>Red Ball 2 - The King</h1>
 <div id="wrap">
   <div id="game-area"></div>
-  <div id="tap">Toca aqui para activar controles</div>
   <div id="status">Cargando...</div>
 </div>
 <div id="controls">
@@ -41,7 +38,6 @@ var ST = document.getElementById('status');
 var RP = null;
 var CDN = "https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.1.0-nightly.2024.1.25/";
 window.RufflePlayer = {config:{publicPath:CDN,autoplay:"on"}};
-
 var sc = document.createElement('script');
 sc.src = CDN + "ruffle.js";
 sc.onload = function() {
@@ -53,55 +49,43 @@ sc.onload = function() {
   ar.parentNode.replaceChild(pl, ar);
   RP = pl;
   pl.load({url:"redball2_theking.swf",allowScriptAccess:true,scale:"showAll",quality:"high",menu:false,autoplay:"on"})
-  .then(function(){ ST.textContent="Listo! Toca la pantalla primero"; })
+  .then(function(){ ST.textContent="Listo!"; })
   .catch(function(e){ ST.textContent="Error: "+e; });
 };
-sc.onerror = function(){ ST.textContent="Sin internet o error CDN"; };
+sc.onerror = function(){ ST.textContent="Error CDN"; };
 document.head.appendChild(sc);
-
-function foco() {
-  if (!RP) return;
-  RP.focus();
-  var sr = RP.shadowRoot;
-  if (!sr) return;
-  var cv = sr.querySelector('canvas');
-  if (!cv) return;
-  cv.focus();
-  var r = RP.getBoundingClientRect();
-  var x = r.left + r.width/2, y = r.top + r.height/2;
-  cv.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientX:x,clientY:y}));
-  cv.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,clientX:x,clientY:y}));
-  cv.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x,clientY:y}));
-}
-
-var tap = document.getElementById('tap');
-tap.addEventListener('touchend', function(e){ e.preventDefault(); tap.className='off'; foco(); }, {passive:false});
-tap.addEventListener('click', function(){ tap.className='off'; foco(); });
-
-var km = {u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',jmp:'ArrowUp'};
 var kc = {ArrowUp:38,ArrowDown:40,ArrowLeft:37,ArrowRight:39};
-
-Object.keys(km).forEach(function(id) {
-  var k = km[id], b = document.getElementById(id);
-  function dn(e){ e.preventDefault(); b.classList.add('pressed'); foco(); sk('keydown',k); }
-  function up(e){ e.preventDefault(); b.classList.remove('pressed'); sk('keyup',k); }
-  b.addEventListener('touchstart',dn,{passive:false});
-  b.addEventListener('touchend',up,{passive:false});
-  b.addEventListener('mousedown',dn);
-  b.addEventListener('mouseup',up);
-});
-
 function sk(t,k) {
-  var o={key:k,code:k,which:kc[k]||0,keyCode:kc[k]||0,bubbles:true,cancelable:true};
-  document.dispatchEvent(new KeyboardEvent(t,o));
   if (!RP) return;
-  RP.dispatchEvent(new KeyboardEvent(t,o));
-  var sr = RP.shadowRoot;
-  if (!sr) return;
-  sr.dispatchEvent(new KeyboardEvent(t,o));
-  var c = sr.querySelector('canvas');
-  if (c) c.dispatchEvent(new KeyboardEvent(t,o));
+  var o={key:k,code:k,which:kc[k]||0,keyCode:kc[k]||0,bubbles:true,cancelable:true,composed:true};
+  var targets=[window,document,document.body,RP];
+  if (RP.shadowRoot) {
+    targets.push(RP.shadowRoot);
+    var cv=RP.shadowRoot.querySelector('canvas');
+    if (cv) targets.push(cv);
+    RP.shadowRoot.querySelectorAll('div').forEach(function(d){targets.push(d);});
+  }
+  targets.forEach(function(el){try{el.dispatchEvent(new KeyboardEvent(t,o));}catch(e){}});
 }
+var km={u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',jmp:'ArrowUp'};
+var held={};
+Object.keys(km).forEach(function(id){
+  var k=km[id],b=document.getElementById(id);
+  function press(e){
+    e.preventDefault(); b.classList.add('pressed');
+    if (!held[k]){ held[k]=true; sk('keydown',k); held[k+'i']=setInterval(function(){sk('keydown',k);},50); }
+  }
+  function release(e){
+    e.preventDefault(); b.classList.remove('pressed');
+    held[k]=false; clearInterval(held[k+'i']); sk('keyup',k);
+  }
+  b.addEventListener('touchstart',press,{passive:false});
+  b.addEventListener('touchend',release,{passive:false});
+  b.addEventListener('touchcancel',release,{passive:false});
+  b.addEventListener('mousedown',press);
+  b.addEventListener('mouseup',release);
+  b.addEventListener('mouseleave',release);
+});
 </script>
 </body>
 </html>
