@@ -11,208 +11,96 @@ h1 { font-size:1em; color:#ff6b35; padding:6px; }
 #wrap { width:100vw; max-width:600px; position:relative; }
 #status { color:#aaa; font-size:0.7em; text-align:center; padding:3px; }
 #game-area { width:100%; aspect-ratio:4/3; background:#000; border:2px solid #ff6b35; }
-#focus-overlay { display:none; position:absolute; top:0; left:0; right:0; bottom:24px; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; font-size:1.1em; color:#fff; text-align:center; cursor:pointer; z-index:10; }
-#focus-overlay.show { display:flex; }
+#tap { display:flex; position:absolute; top:0; left:0; right:0; bottom:24px; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; font-size:1.1em; color:#fff; cursor:pointer; z-index:10; }
+#tap.off { display:none; }
 #controls { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:#0d0621; width:100%; max-width:600px; }
 .btn { background:#2d1b4e; border:2px solid #ff6b35; border-radius:12px; color:#fff; font-size:1.8em; padding:14px 0; cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none; text-align:center; }
 .btn:active,.btn.pressed { background:#ff6b35; }
-.btn-empty { visibility:hidden; }
-#jump-btn { grid-column:1/4; font-size:1em; padding:12px; }
+.e { visibility:hidden; }
+#jmp { grid-column:1/4; font-size:1em; padding:12px; }
 </style>
 </head>
 <body>
 <h1>Red Ball 2 - The King</h1>
 <div id="wrap">
   <div id="game-area"></div>
-  <div id="focus-overlay" class="show">Toca aqui para activar los controles</div>
-  <div id="status">Cargando Ruffle...</div>
+  <div id="tap">Toca aqui para activar controles</div>
+  <div id="status">Cargando...</div>
 </div>
 <div id="controls">
-  <button class="btn btn-empty"></button>
-  <button class="btn" id="btn-up">^</button>
-  <button class="btn btn-empty"></button>
-  <button class="btn" id="btn-left">&lt;</button>
-  <button class="btn" id="btn-down">v</button>
-  <button class="btn" id="btn-right">&gt;</button>
-  <button class="btn" id="jump-btn">SALTAR</button>
+  <button class="btn e"></button>
+  <button class="btn" id="u">^</button>
+  <button class="btn e"></button>
+  <button class="btn" id="l">&lt;</button>
+  <button class="btn" id="d">v</button>
+  <button class="btn" id="r">&gt;</button>
+  <button class="btn" id="jmp">SALTAR</button>
 </div>
 <script>
-var STATUS = document.getElementById('status');
-function log(msg) { STATUS.textContent = msg; }
-var RUFFLE_CDN = "https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.1.0-nightly.2024.1.25/";
-window.RufflePlayer = window.RufflePlayer || {};
-window.RufflePlayer.config = { publicPath: RUFFLE_CDN, autoplay: "on" };
-var rufflePlayer = null;
-var s = document.createElement('script');
-s.src = RUFFLE_CDN + "ruffle.js";
-s.onload = function() {
-  log("Ruffle OK, cargando juego...");
-  var ruffle = window.RufflePlayer.newest();
-  var player = ruffle.createPlayer();
-  player.style.cssText = "width:100%;aspect-ratio:4/3;display:block;background:#000;";
-  var area = document.getElementById('game-area');
-  area.parentNode.replaceChild(player, area);
-  rufflePlayer = player;
-  player.load({ url:"redball2_theking.swf", allowScriptAccess:true, scale:"showAll", quality:"high", menu:false, autoplay:"on" })
-    .then(function(){ log("Listo! Toca el juego primero"); })
-    .catch(function(e){ log("Error: "+e); });
+var ST = document.getElementById('status');
+var RP = null;
+var CDN = "https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.1.0-nightly.2024.1.25/";
+window.RufflePlayer = {config:{publicPath:CDN,autoplay:"on"}};
+
+var sc = document.createElement('script');
+sc.src = CDN + "ruffle.js";
+sc.onload = function() {
+  ST.textContent = "Cargando juego...";
+  var rf = window.RufflePlayer.newest();
+  var pl = rf.createPlayer();
+  pl.style.cssText = "width:100%;aspect-ratio:4/3;display:block;background:#000;";
+  var ar = document.getElementById('game-area');
+  ar.parentNode.replaceChild(pl, ar);
+  RP = pl;
+  pl.load({url:"redball2_theking.swf",allowScriptAccess:true,scale:"showAll",quality:"high",menu:false,autoplay:"on"})
+  .then(function(){ ST.textContent="Listo! Toca la pantalla primero"; })
+  .catch(function(e){ ST.textContent="Error: "+e; });
 };
-s.onerror = function(){ log("Error cargando Ruffle."); };
-document.head.appendChild(s);
-var overlay = document.getElementById('focus-overlay');
-function activar(e) {
-  if (e.preventDefault) e.preventDefault();
-  overlay.classList.remove('show');
-  focusPlayer();
+sc.onerror = function(){ ST.textContent="Sin internet o error CDN"; };
+document.head.appendChild(sc);
+
+function foco() {
+  if (!RP) return;
+  RP.focus();
+  var sr = RP.shadowRoot;
+  if (!sr) return;
+  var cv = sr.querySelector('canvas');
+  if (!cv) return;
+  cv.focus();
+  var r = RP.getBoundingClientRect();
+  var x = r.left + r.width/2, y = r.top + r.height/2;
+  cv.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,clientX:x,clientY:y}));
+  cv.dispatchEvent(new MouseEvent('mouseup',{bubbles:true,clientX:x,clientY:y}));
+  cv.dispatchEvent(new MouseEvent('click',{bubbles:true,clientX:x,clientY:y}));
 }
-overlay.addEventListener('click', activar);
-overlay.addEventListener('touchend', activar, {passive:false});
-function focusPlayer() {
-  if (!rufflePlayer) return;
-  rufflePlayer.focus();
-  var canvas = rufflePlayer.shadowRoot && rufflePlayer.shadowRoot.querySelector('canvas');
-  if (canvas) {
-    canvas.focus();
-    var rect = rufflePlayer.getBoundingClientRect();
-    var cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-    canvas.dispatchEvent(new MouseEvent('mousedown', {bubbles:true, clientX:cx, clientY:cy}));
-    canvas.dispatchEvent(new MouseEvent('mouseup', {bubbles:true, clientX:cx, clientY:cy}));
-    canvas.dispatchEvent(new MouseEvent('click', {bubbles:true, clientX:cx, clientY:cy}));
-  }
-}
-var keyMap = {'btn-up':'ArrowUp','btn-down':'ArrowDown','btn-left':'ArrowLeft','btn-right':'ArrowRight','jump-btn':'ArrowUp'};
-var keyCodes = {'ArrowUp':38,'ArrowDown':40,'ArrowLeft':37,'ArrowRight':39};
-Object.keys(keyMap).forEach(function(id) {
-  var key = keyMap[id], btn = document.getElementById(id);
-  if (!btn) return;
-  function dn(e){ e.preventDefault(); btn.classList.add('pressed'); focusPlayer(); sendKey('keydown',key); }
-  function up(e){ e.preventDefault(); btn.classList.remove('pressed'); sendKey('keyup',key); }
-  btn.addEventListener('touchstart', dn, {passive:false});
-  btn.addEventListener('touchend', up, {passive:false});
-  btn.addEventListener('mousedown', dn);
-  btn.addEventListener('mouseup', up);
+
+var tap = document.getElementById('tap');
+tap.addEventListener('touchend', function(e){ e.preventDefault(); tap.className='off'; foco(); }, {passive:false});
+tap.addEventListener('click', function(){ tap.className='off'; foco(); });
+
+var km = {u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',jmp:'ArrowUp'};
+var kc = {ArrowUp:38,ArrowDown:40,ArrowLeft:37,ArrowRight:39};
+
+Object.keys(km).forEach(function(id) {
+  var k = km[id], b = document.getElementById(id);
+  function dn(e){ e.preventDefault(); b.classList.add('pressed'); foco(); sk('keydown',k); }
+  function up(e){ e.preventDefault(); b.classList.remove('pressed'); sk('keyup',k); }
+  b.addEventListener('touchstart',dn,{passive:false});
+  b.addEventListener('touchend',up,{passive:false});
+  b.addEventListener('mousedown',dn);
+  b.addEventListener('mouseup',up);
 });
-function sendKey(type, key) {
-  var kc = keyCodes[key]||0;
-  var opts = {key:key, code:key, which:kc, keyCode:kc, bubbles:true, cancelable:true};
-  document.dispatchEvent(new KeyboardEvent(type, opts));
-  if (rufflePlayer) {
-    rufflePlayer.dispatchEvent(new KeyboardEvent(type, opts));<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Red Ball 2 - The King</title>
-<style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:#1a0a2e; display:flex; flex-direction:column; align-items:center; min-height:100vh; font-family:Arial,sans-serif; color:#fff; }
-h1 { font-size:1em; color:#ff6b35; padding:6px; }
-#wrap { width:100vw; max-width:600px; position:relative; }
-#status { color:#aaa; font-size:0.7em; text-align:center; padding:3px; }
-#game-area { width:100%; aspect-ratio:4/3; background:#000; border:2px solid #ff6b35; }
-#focus-overlay { display:none; position:absolute; top:0; left:0; right:0; bottom:24px; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; font-size:1.1em; color:#fff; text-align:center; cursor:pointer; z-index:10; }
-#focus-overlay.show { display:flex; }
-#controls { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:#0d0621; width:100%; max-width:600px; }
-.btn { background:#2d1b4e; border:2px solid #ff6b35; border-radius:12px; color:#fff; font-size:1.8em; padding:14px 0; cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none; text-align:center; }
-.btn:active,.btn.pressed { background:#ff6b35; }
-.btn-empty { visibility:hidden; }
-#jump-btn { grid-column:1/4; font-size:1em; padding:12px; }
-</style>
-</head>
-<body>
-<h1>Red Ball 2 - The King</h1>
-<div id="wrap">
-  <div id="game-area"></div>
-  <div id="focus-overlay" class="show">Toca aqui para activar los controles</div>
-  <div id="status">Cargando Ruffle...</div>
-</div>
-<div id="controls">
-  <button class="btn btn-empty"></button>
-  <button class="btn" id="btn-up">^</button>
-  <button class="btn btn-empty"></button>
-  <button class="btn" id="btn-left">&lt;</button>
-  <button class="btn" id="btn-down">v</button>
-  <button class="btn" id="btn-right">&gt;</button>
-  <button class="btn" id="jump-btn">SALTAR</button>
-</div>
-<script>
-var STATUS = document.getElementById('status');
-function log(msg) { STATUS.textContent = msg; }
-var RUFFLE_CDN = "https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.1.0-nightly.2024.1.25/";
-window.RufflePlayer = window.RufflePlayer || {};
-window.RufflePlayer.config = { publicPath: RUFFLE_CDN, autoplay: "on" };
-var rufflePlayer = null;
-var s = document.createElement('script');
-s.src = RUFFLE_CDN + "ruffle.js";
-s.onload = function() {
-  log("Ruffle OK, cargando juego...");
-  var ruffle = window.RufflePlayer.newest();
-  var player = ruffle.createPlayer();
-  player.style.cssText = "width:100%;aspect-ratio:4/3;display:block;background:#000;";
-  var area = document.getElementById('game-area');
-  area.parentNode.replaceChild(player, area);
-  rufflePlayer = player;
-  player.load({ url:"redball2_theking.swf", allowScriptAccess:true, scale:"showAll", quality:"high", menu:false, autoplay:"on" })
-    .then(function(){ log("Listo! Toca el juego primero"); })
-    .catch(function(e){ log("Error: "+e); });
-};
-s.onerror = function(){ log("Error cargando Ruffle."); };
-document.head.appendChild(s);
-var overlay = document.getElementById('focus-overlay');
-function activar(e) {
-  if (e.preventDefault) e.preventDefault();
-  overlay.classList.remove('show');
-  focusPlayer();
-}
-overlay.addEventListener('click', activar);
-overlay.addEventListener('touchend', activar, {passive:false});
-function focusPlayer() {
-  if (!rufflePlayer) return;
-  rufflePlayer.focus();
-  var canvas = rufflePlayer.shadowRoot && rufflePlayer.shadowRoot.querySelector('canvas');
-  if (canvas) {
-    canvas.focus();
-    var rect = rufflePlayer.getBoundingClientRect();
-    var cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-    canvas.dispatchEvent(new MouseEvent('mousedown', {bubbles:true, clientX:cx, clientY:cy}));
-    canvas.dispatchEvent(new MouseEvent('mouseup', {bubbles:true, clientX:cx, clientY:cy}));
-    canvas.dispatchEvent(new MouseEvent('click', {bubbles:true, clientX:cx, clientY:cy}));
-  }
-}
-var keyMap = {'btn-up':'ArrowUp','btn-down':'ArrowDown','btn-left':'ArrowLeft','btn-right':'ArrowRight','jump-btn':'ArrowUp'};
-var keyCodes = {'ArrowUp':38,'ArrowDown':40,'ArrowLeft':37,'ArrowRight':39};
-Object.keys(keyMap).forEach(function(id) {
-  var key = keyMap[id], btn = document.getElementById(id);
-  if (!btn) return;
-  function dn(e){ e.preventDefault(); btn.classList.add('pressed'); focusPlayer(); sendKey('keydown',key); }
-  function up(e){ e.preventDefault(); btn.classList.remove('pressed'); sendKey('keyup',key); }
-  btn.addEventListener('touchstart', dn, {passive:false});
-  btn.addEventListener('touchend', up, {passive:false});
-  btn.addEventListener('mousedown', dn);
-  btn.addEventListener('mouseup', up);
-});
-function sendKey(type, key) {
-  var kc = keyCodes[key]||0;
-  var opts = {key:key, code:key, which:kc, keyCode:kc, bubbles:true, cancelable:true};
-  document.dispatchEvent(new KeyboardEvent(type, opts));
-  if (rufflePlayer) {
-    rufflePlayer.dispatchEvent(new KeyboardEvent(type, opts));
-    if (rufflePlayer.shadowRoot) {
-      rufflePlayer.shadowRoot.dispatchEvent(new KeyboardEvent(type, opts));
-      var c = rufflePlayer.shadowRoot.querySelector('canvas');
-      if (c) c.dispatchEvent(new KeyboardEvent(type, opts));
-    }
-  }
-}
-</script>
-</body>
-</html>
-    if (rufflePlayer.shadowRoot) {
-      rufflePlayer.shadowRoot.dispatchEvent(new KeyboardEvent(type, opts));
-      var c = rufflePlayer.shadowRoot.querySelector('canvas');
-      if (c) c.dispatchEvent(new KeyboardEvent(type, opts));
-    }
-  }
+
+function sk(t,k) {
+  var o={key:k,code:k,which:kc[k]||0,keyCode:kc[k]||0,bubbles:true,cancelable:true};
+  document.dispatchEvent(new KeyboardEvent(t,o));
+  if (!RP) return;
+  RP.dispatchEvent(new KeyboardEvent(t,o));
+  var sr = RP.shadowRoot;
+  if (!sr) return;
+  sr.dispatchEvent(new KeyboardEvent(t,o));
+  var c = sr.querySelector('canvas');
+  if (c) c.dispatchEvent(new KeyboardEvent(t,o));
 }
 </script>
 </body>
