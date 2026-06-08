@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Red Ball 2 - The King</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a0a2e; display:flex; flex-direction:column; align-items:center; min-height:100vh; font-family:Arial,sans-serif; color:#fff; }
+h1 { font-size:1em; color:#ff6b35; padding:6px; }
+#wrap { width:100vw; max-width:600px; }
+#status { color:#aaa; font-size:0.7em; text-align:center; padding:3px; }
+#game-area { width:100%; aspect-ratio:4/3; background:#000; border:2px solid #ff6b35; }
+#controls { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:#0d0621; width:100%; max-width:600px; }
+.btn { background:#2d1b4e; border:2px solid #ff6b35; border-radius:12px; color:#fff; font-size:1.8em; padding:14px 0; cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none; text-align:center; }
+.btn:active,.btn.pressed { background:#ff6b35; }
+.btn-empty { visibility:hidden; }
+#jump-btn { grid-column:1/4; font-size:1em; padding:12px; }
+</style>
+</head>
+<body>
+<h1>🔴 Red Ball 2 – The King</h1>
+<div id="wrap">
+  <div id="game-area"></div>
+  <div id="status">Cargando Ruffle...</div>
+</div>
+<div id="controls">
+  <button class="btn btn-empty"></button>
+  <button class="btn" id="btn-up">⬆</button>
+  <button class="btn btn-empty"></button>
+  <button class="btn" id="btn-left">⬅</button>
+  <button class="btn" id="btn-down">⬇</button>
+  <button class="btn" id="btn-right">➡</button>
+  <button class="btn" id="jump-btn">⬆ SALTAR / ENTER</button>
+</div>
+<script>
+var STATUS = document.getElementById('status');
+function log(msg) { STATUS.textContent = msg; }
+var RUFFLE_CDN = "https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.1.0-nightly.2024.1.25/";
+window.RufflePlayer = window.RufflePlayer || {};
+window.RufflePlayer.config = { publicPath: RUFFLE_CDN, autoplay: "on" };
+var s = document.createElement('script');
+s.src = RUFFLE_CDN + "ruffle.js";
+s.onload = function() {
+  log("Ruffle OK, cargando juego...");
+  var ruffle = window.RufflePlayer.newest();
+  var player = ruffle.createPlayer();
+  player.style.cssText = "width:100%;aspect-ratio:4/3;display:block;background:#000;";
+  var area = document.getElementById('game-area');
+  area.parentNode.replaceChild(player, area);
+  player.load({ url: "redball2_theking.swf", allowScriptAccess: true, scale: "showAll", quality: "high", menu: false, autoplay: "on" })
+    .then(function(){ log("✅ Listo!"); })
+    .catch(function(e){ log("Error: " + e); });
+};
+s.onerror = function(){ log("Error cargando Ruffle."); };
+document.head.appendChild(s);
+var keyMap = {'btn-up':'ArrowUp','btn-down':'ArrowDown','btn-left':'ArrowLeft','btn-right':'ArrowRight','jump-btn':'Enter'};
+Object.keys(keyMap).forEach(function(id) {
+  var key = keyMap[id], btn = document.getElementById(id);
+  if (!btn) return;
+  function dn(e){ e.preventDefault(); btn.classList.add('pressed'); sendKey('keydown',key); }
+  function up(e){ e.preventDefault(); btn.classList.remove('pressed'); sendKey('keyup',key); }
+  btn.addEventListener('touchstart',dn,{passive:false});
+  btn.addEventListener('touchend',up,{passive:false});
+  btn.addEventListener('mousedown',dn);
+  btn.addEventListener('mouseup',up);
+});
+function sendKey(type,key) {
+  var o={key:key,code:key,bubbles:true,cancelable:true};
+  document.dispatchEvent(new KeyboardEvent(type,o));
+  document.querySelectorAll('ruffle-player').forEach(function(p){
+    p.dispatchEvent(new KeyboardEvent(type,o));
+    if(p.shadowRoot){var c=p.shadowRoot.querySelector('canvas');if(c)c.dispatchEvent(new KeyboardEvent(type,o));}
+  });
+}
+</script>
+</body>
+</html>
