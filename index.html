@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Red Ball 2</title>
+<title>Red Ball 2 - The King</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#1a0a2e; display:flex; flex-direction:column; align-items:center; font-family:Arial,sans-serif; color:#fff; }
@@ -46,56 +46,44 @@ sc.onload = function() {
   pl.style.cssText = "width:100%;aspect-ratio:4/3;display:block;background:#000;";
   document.getElementById('game-area').replaceWith(pl);
   RP = pl;
-  pl.load({url:"redball2_theking.swf",allowScriptAccess:true,scale:"showAll",quality:"high",menu:false,autoplay:"on"})
-  .then(function(){ ST.textContent="Listo! Toca el juego y luego usa los botones"; })
+  pl.load({url:"redball2_patched.swf", allowScriptAccess:true, scale:"showAll", quality:"high", menu:false, autoplay:"on"})
+  .then(function(){ ST.textContent="Listo!"; })
   .catch(function(e){ ST.textContent="Error: "+e; });
 };
 sc.onerror = function(){ ST.textContent="Error CDN"; };
 document.head.appendChild(sc);
 
-var kc = {u:38,d:40,l:37,r:39,jmp:38};
+var keys = {u:38, d:40, l:37, r:39, jmp:38};
+var held = {};
 
-function fire(t,k) {
-  var o = {key:k==37?'ArrowLeft':k==39?'ArrowRight':k==38?'ArrowUp':'ArrowDown',
-           code:k==37?'ArrowLeft':k==39?'ArrowRight':k==38?'ArrowUp':'ArrowDown',
-           keyCode:k, which:k, charCode:0,
-           bubbles:true, cancelable:true, composed:true,
-           shiftKey:false, ctrlKey:false, altKey:false, metaKey:false};
-  [window, document, document.body].forEach(function(el){
-    try{ el.dispatchEvent(new KeyboardEvent(t,o)); }catch(e){}
-  });
+function callSwf(fn, code) {
   if (!RP) return;
-  try{ RP.focus(); }catch(e){}
-  [RP].forEach(function(el){
-    try{ el.dispatchEvent(new KeyboardEvent(t,o)); }catch(e){}
-  });
-  if (!RP.shadowRoot) return;
-  var sr = RP.shadowRoot;
-  try{ sr.dispatchEvent(new KeyboardEvent(t,o)); }catch(e){}
-  sr.querySelectorAll('*').forEach(function(el){
-    try{ el.dispatchEvent(new KeyboardEvent(t,o)); }catch(e){}
-  });
+  try {
+    RP.callExternalInterface(fn, code);
+  } catch(e) {
+    // fallback: try via ruffle's internal API
+    try { RP[fn](code); } catch(e2) {}
+  }
 }
 
-var held = {};
-Object.keys(kc).forEach(function(id) {
-  var k = kc[id];
+Object.keys(keys).forEach(function(id) {
+  var k = keys[id];
   var b = document.getElementById(id);
   function dn(e) {
     e.preventDefault();
     b.classList.add('pressed');
     if (!held[id]) {
       held[id] = true;
-      fire('keydown', k);
-      held[id+'_t'] = setInterval(function(){ fire('keydown',k); }, 40);
+      callSwf('_kd', k);
+      held[id+'t'] = setInterval(function(){ callSwf('_kd', k); }, 50);
     }
   }
   function up(e) {
     e.preventDefault();
     b.classList.remove('pressed');
     held[id] = false;
-    clearInterval(held[id+'_t']);
-    fire('keyup', k);
+    clearInterval(held[id+'t']);
+    callSwf('_ku', k);
   }
   b.addEventListener('touchstart', dn, {passive:false});
   b.addEventListener('touchend', up, {passive:false});
