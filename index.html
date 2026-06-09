@@ -5,15 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Red Ball 2 - The King</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:#1a0a2e; display:flex; flex-direction:column; align-items:center; font-family:Arial,sans-serif; color:#fff; }
+* { margin:0; padding:0; box-sizing:border-box; touch-action: manipulation; }
+body { background:#1a0a2e; display:flex; flex-direction:column; align-items:center; font-family:Arial,sans-serif; color:#fff; height: 100vh; overflow: hidden; }
 h1 { font-size:1em; color:#ff6b35; padding:6px; }
 #wrap { width:100vw; max-width:600px; }
 #status { color:#aaa; font-size:0.7em; text-align:center; padding:3px; }
 #game-area { width:100%; aspect-ratio:4/3; background:#000; border:2px solid #ff6b35; }
-#controls { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:#0d0621; width:100%; max-width:600px; }
-.btn { background:#2d1b4e; border:2px solid #ff6b35; border-radius:12px; color:#fff; font-size:1.8em; padding:14px 0; cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none; text-align:center; }
-.btn:active,.btn.pressed { background:#ff6b35; }
+#controls { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:#0d0621; width:100%; max-width:600px; margin-top: auto; }
+.btn { background:#2d1b4e; border:2px solid #ff6b35; border-radius:12px; color:#fff; font-size:1.5em; padding:15px 0; cursor:pointer; user-select:none; -webkit-user-select:none; text-align:center; }
+.btn:active { background:#ff6b35; }
 .e { visibility:hidden; }
 #jmp { grid-column:1/4; font-size:1em; padding:12px; }
 </style>
@@ -33,11 +33,13 @@ h1 { font-size:1em; color:#ff6b35; padding:6px; }
   <button class="btn" id="r">&gt;</button>
   <button class="btn" id="jmp">SALTAR</button>
 </div>
+
 <script>
 var ST = document.getElementById('status');
 var RP = null;
 var CDN = "https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.1.0-nightly.2024.1.25/";
 window.RufflePlayer = {config:{publicPath:CDN,autoplay:"on"}};
+
 var sc = document.createElement('script');
 sc.src = CDN + "ruffle.js";
 sc.onload = function() {
@@ -47,50 +49,45 @@ sc.onload = function() {
   document.getElementById('game-area').replaceWith(pl);
   RP = pl;
   pl.load({url:"redball2_patched.swf", allowScriptAccess:true, scale:"showAll", quality:"high", menu:false, autoplay:"on"})
-  .then(function(){ ST.textContent="Listo!"; })
+  .then(function(){ ST.textContent="Listo! Toca el juego para enfocar."; })
   .catch(function(e){ ST.textContent="Error: "+e; });
 };
-sc.onerror = function(){ ST.textContent="Error CDN"; };
 document.head.appendChild(sc);
 
-var keys = {u:38, d:40, l:37, r:39, jmp:38};
-var held = {};
+// Mapeo de botones a teclas
+var keysMap = {
+    'u': 'ArrowUp',
+    'd': 'ArrowDown',
+    'l': 'ArrowLeft',
+    'r': 'ArrowRight',
+    'jmp': ' ' 
+};
 
-function callSwf(fn, code) {
-  if (!RP) return;
-  try {
-    RP.callExternalInterface(fn, code);
-  } catch(e) {
-    // fallback: try via ruffle's internal API
-    try { RP[fn](code); } catch(e2) {}
-  }
+function sendKey(key, type) {
+    if (!RP) return;
+    const event = new KeyboardEvent(type, {
+        key: key,
+        code: key === ' ' ? 'Space' : key,
+        bubbles: true,
+        cancelable: true
+    });
+    RP.dispatchEvent(event);
+    RP.focus(); // Asegura que el juego reciba la entrada
 }
 
-Object.keys(keys).forEach(function(id) {
-  var k = keys[id];
-  var b = document.getElementById(id);
-  function dn(e) {
-    e.preventDefault();
-    b.classList.add('pressed');
-    if (!held[id]) {
-      held[id] = true;
-      callSwf('_kd', k);
-      held[id+'t'] = setInterval(function(){ callSwf('_kd', k); }, 50);
-    }
-  }
-  function up(e) {
-    e.preventDefault();
-    b.classList.remove('pressed');
-    held[id] = false;
-    clearInterval(held[id+'t']);
-    callSwf('_ku', k);
-  }
-  b.addEventListener('touchstart', dn, {passive:false});
-  b.addEventListener('touchend', up, {passive:false});
-  b.addEventListener('touchcancel', up, {passive:false});
-  b.addEventListener('mousedown', dn);
-  b.addEventListener('mouseup', up);
-  b.addEventListener('mouseleave', up);
+Object.keys(keysMap).forEach(function(id) {
+    var b = document.getElementById(id);
+    var key = keysMap[id];
+    
+    b.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        sendKey(key, 'keydown');
+    }, {passive: false});
+    
+    b.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        sendKey(key, 'keyup');
+    }, {passive: false});
 });
 </script>
 </body>
