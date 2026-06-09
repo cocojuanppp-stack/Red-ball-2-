@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Red Ball 2 - The King</title>
+<title>Red Ball 2</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#1a0a2e; display:flex; flex-direction:column; align-items:center; min-height:100vh; font-family:Arial,sans-serif; color:#fff; }
+body { background:#1a0a2e; display:flex; flex-direction:column; align-items:center; font-family:Arial,sans-serif; color:#fff; }
 h1 { font-size:1em; color:#ff6b35; padding:6px; }
 #wrap { width:100vw; max-width:600px; }
 #status { color:#aaa; font-size:0.7em; text-align:center; padding:3px; }
@@ -41,50 +41,68 @@ window.RufflePlayer = {config:{publicPath:CDN,autoplay:"on"}};
 var sc = document.createElement('script');
 sc.src = CDN + "ruffle.js";
 sc.onload = function() {
-  ST.textContent = "Cargando juego...";
   var rf = window.RufflePlayer.newest();
   var pl = rf.createPlayer();
   pl.style.cssText = "width:100%;aspect-ratio:4/3;display:block;background:#000;";
-  var ar = document.getElementById('game-area');
-  ar.parentNode.replaceChild(pl, ar);
+  document.getElementById('game-area').replaceWith(pl);
   RP = pl;
   pl.load({url:"redball2_theking.swf",allowScriptAccess:true,scale:"showAll",quality:"high",menu:false,autoplay:"on"})
-  .then(function(){ ST.textContent="Listo!"; })
+  .then(function(){ ST.textContent="Listo! Toca el juego y luego usa los botones"; })
   .catch(function(e){ ST.textContent="Error: "+e; });
 };
 sc.onerror = function(){ ST.textContent="Error CDN"; };
 document.head.appendChild(sc);
-var kc = {ArrowUp:38,ArrowDown:40,ArrowLeft:37,ArrowRight:39};
-function sk(t,k) {
+
+var kc = {u:38,d:40,l:37,r:39,jmp:38};
+
+function fire(t,k) {
+  var o = {key:k==37?'ArrowLeft':k==39?'ArrowRight':k==38?'ArrowUp':'ArrowDown',
+           code:k==37?'ArrowLeft':k==39?'ArrowRight':k==38?'ArrowUp':'ArrowDown',
+           keyCode:k, which:k, charCode:0,
+           bubbles:true, cancelable:true, composed:true,
+           shiftKey:false, ctrlKey:false, altKey:false, metaKey:false};
+  [window, document, document.body].forEach(function(el){
+    try{ el.dispatchEvent(new KeyboardEvent(t,o)); }catch(e){}
+  });
   if (!RP) return;
-  var o={key:k,code:k,which:kc[k]||0,keyCode:kc[k]||0,bubbles:true,cancelable:true,composed:true};
-  var targets=[window,document,document.body,RP];
-  if (RP.shadowRoot) {
-    targets.push(RP.shadowRoot);
-    var cv=RP.shadowRoot.querySelector('canvas');
-    if (cv) targets.push(cv);
-    RP.shadowRoot.querySelectorAll('div').forEach(function(d){targets.push(d);});
-  }
-  targets.forEach(function(el){try{el.dispatchEvent(new KeyboardEvent(t,o));}catch(e){}});
+  try{ RP.focus(); }catch(e){}
+  [RP].forEach(function(el){
+    try{ el.dispatchEvent(new KeyboardEvent(t,o)); }catch(e){}
+  });
+  if (!RP.shadowRoot) return;
+  var sr = RP.shadowRoot;
+  try{ sr.dispatchEvent(new KeyboardEvent(t,o)); }catch(e){}
+  sr.querySelectorAll('*').forEach(function(el){
+    try{ el.dispatchEvent(new KeyboardEvent(t,o)); }catch(e){}
+  });
 }
-var km={u:'ArrowUp',d:'ArrowDown',l:'ArrowLeft',r:'ArrowRight',jmp:'ArrowUp'};
-var held={};
-Object.keys(km).forEach(function(id){
-  var k=km[id],b=document.getElementById(id);
-  function press(e){
-    e.preventDefault(); b.classList.add('pressed');
-    if (!held[k]){ held[k]=true; sk('keydown',k); held[k+'i']=setInterval(function(){sk('keydown',k);},50); }
+
+var held = {};
+Object.keys(kc).forEach(function(id) {
+  var k = kc[id];
+  var b = document.getElementById(id);
+  function dn(e) {
+    e.preventDefault();
+    b.classList.add('pressed');
+    if (!held[id]) {
+      held[id] = true;
+      fire('keydown', k);
+      held[id+'_t'] = setInterval(function(){ fire('keydown',k); }, 40);
+    }
   }
-  function release(e){
-    e.preventDefault(); b.classList.remove('pressed');
-    held[k]=false; clearInterval(held[k+'i']); sk('keyup',k);
+  function up(e) {
+    e.preventDefault();
+    b.classList.remove('pressed');
+    held[id] = false;
+    clearInterval(held[id+'_t']);
+    fire('keyup', k);
   }
-  b.addEventListener('touchstart',press,{passive:false});
-  b.addEventListener('touchend',release,{passive:false});
-  b.addEventListener('touchcancel',release,{passive:false});
-  b.addEventListener('mousedown',press);
-  b.addEventListener('mouseup',release);
-  b.addEventListener('mouseleave',release);
+  b.addEventListener('touchstart', dn, {passive:false});
+  b.addEventListener('touchend', up, {passive:false});
+  b.addEventListener('touchcancel', up, {passive:false});
+  b.addEventListener('mousedown', dn);
+  b.addEventListener('mouseup', up);
+  b.addEventListener('mouseleave', up);
 });
 </script>
 </body>
