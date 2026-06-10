@@ -3,92 +3,55 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Red Ball 2 - The King</title>
+<title>Red Ball 2</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; touch-action: manipulation; }
-body { background:#1a0a2e; display:flex; flex-direction:column; align-items:center; font-family:Arial,sans-serif; color:#fff; height: 100vh; overflow: hidden; }
-h1 { font-size:1em; color:#ff6b35; padding:6px; }
-#wrap { width:100vw; max-width:600px; }
-#status { color:#aaa; font-size:0.7em; text-align:center; padding:3px; }
-#game-area { width:100%; aspect-ratio:4/3; background:#000; border:2px solid #ff6b35; }
-#controls { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px; background:#0d0621; width:100%; max-width:600px; margin-top: auto; }
-.btn { background:#2d1b4e; border:2px solid #ff6b35; border-radius:12px; color:#fff; font-size:1.5em; padding:15px 0; cursor:pointer; user-select:none; -webkit-user-select:none; text-align:center; }
-.btn:active { background:#ff6b35; }
-.e { visibility:hidden; }
-#jmp { grid-column:1/4; font-size:1em; padding:12px; }
+  body { margin:0; background:#000; display:flex; flex-direction:column; align-items:center; height:100vh; overflow:hidden; }
+  #game-container { width:100vw; height:60vh; background:#000; }
+  #controls { display:grid; grid-template-columns:repeat(3,1fr); width:100vw; height:40vh; gap:2px; padding:5px; box-sizing:border-box; }
+  .btn { background:#333; color:#fff; border:none; font-size:2em; border-radius:10px; }
+  .btn:active { background:#ff6b35; }
 </style>
 </head>
 <body>
-<h1>Red Ball 2 - The King</h1>
-<div id="wrap">
-  <div id="game-area"></div>
-  <div id="status">Cargando...</div>
-</div>
+
+<div id="game-container"></div>
+
 <div id="controls">
-  <button class="btn e"></button>
-  <button class="btn" id="u">^</button>
-  <button class="btn e"></button>
-  <button class="btn" id="l">&lt;</button>
-  <button class="btn" id="d">v</button>
-  <button class="btn" id="r">&gt;</button>
-  <button class="btn" id="jmp">SALTAR</button>
+  <button class="btn" style="visibility:hidden"></button>
+  <button class="btn" id="u">▲</button>
+  <button class="btn" style="visibility:hidden"></button>
+  <button class="btn" id="l">◀</button>
+  <button class="btn" id="d">▼</button>
+  <button class="btn" id="r">▶</button>
+  <button class="btn" id="jmp" style="grid-column: span 3">SALTAR</button>
 </div>
 
+<script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
 <script>
-var ST = document.getElementById('status');
-var RP = null;
-var CDN = "https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.1.0-nightly.2024.1.25/";
-window.RufflePlayer = {config:{publicPath:CDN,autoplay:"on"}};
+  window.RufflePlayer = window.RufflePlayer || {};
+  window.addEventListener("load", () => {
+    const ruffle = window.RufflePlayer.newest();
+    const player = ruffle.createPlayer();
+    const container = document.getElementById("game-container");
+    container.appendChild(player);
+    
+    player.load({url: "redball2_patched.swf", scale: "exactFit"});
 
-var sc = document.createElement('script');
-sc.src = CDN + "ruffle.js";
-sc.onload = function() {
-  var rf = window.RufflePlayer.newest();
-  var pl = rf.createPlayer();
-  pl.style.cssText = "width:100%;aspect-ratio:4/3;display:block;background:#000;";
-  document.getElementById('game-area').replaceWith(pl);
-  RP = pl;
-  pl.load({url:"redball2_patched.swf", allowScriptAccess:true, scale:"showAll", quality:"high", menu:false, autoplay:"on"})
-  .then(function(){ ST.textContent="Listo! Toca el juego para enfocar."; })
-  .catch(function(e){ ST.textContent="Error: "+e; });
-};
-document.head.appendChild(sc);
-
-// Mapeo de botones a teclas
-var keysMap = {
-    'u': 'ArrowUp',
-    'd': 'ArrowDown',
-    'l': 'ArrowLeft',
-    'r': 'ArrowRight',
-    'jmp': ' ' 
-};
-
-function sendKey(key, type) {
-    if (!RP) return;
-    const event = new KeyboardEvent(type, {
-        key: key,
-        code: key === ' ' ? 'Space' : key,
-        bubbles: true,
-        cancelable: true
+    const keys = { 'u': 'ArrowUp', 'd': 'ArrowDown', 'l': 'ArrowLeft', 'r': 'ArrowRight', 'jmp': ' ' };
+    
+    Object.keys(keys).forEach(id => {
+      const btn = document.getElementById(id);
+      btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        player.dispatchEvent(new KeyboardEvent('keydown', { key: keys[id] }));
+      });
+      btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        player.dispatchEvent(new KeyboardEvent('keyup', { key: keys[id] }));
+      });
     });
-    RP.dispatchEvent(event);
-    RP.focus(); // Asegura que el juego reciba la entrada
-}
-
-Object.keys(keysMap).forEach(function(id) {
-    var b = document.getElementById(id);
-    var key = keysMap[id];
-    
-    b.addEventListener('touchstart', function(e) {
-        e.preventDefault();
-        sendKey(key, 'keydown');
-    }, {passive: false});
-    
-    b.addEventListener('touchend', function(e) {
-        e.preventDefault();
-        sendKey(key, 'keyup');
-    }, {passive: false});
-});
+  });
 </script>
+
 </body>
 </html>
